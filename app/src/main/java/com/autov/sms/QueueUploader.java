@@ -155,6 +155,43 @@ public class QueueUploader {
 
             Log.d(TAG, "➡️ Config '" + config.title + "' sending [" + source + "] " + from);
 
+            // Ping verifyUrl to notify the server
+            if (config.token != null && !config.token.isEmpty()) {
+                try {
+                    String mobileAddress = DeviceIdUtil.get(ctx);
+                    String urlStr = Const.verifyUrl(config.token) + "&mobile_address=" + mobileAddress;
+                    HttpURLConnection vc = (HttpURLConnection) new URL(urlStr).openConnection();
+                    vc.setRequestMethod("GET");
+                    vc.setConnectTimeout(5000);
+                    int code = vc.getResponseCode();
+                    
+                    String respMsg = "";
+                    try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(
+                            (code >= 200 && code < 300) ? vc.getInputStream() : vc.getErrorStream(),
+                            StandardCharsets.UTF_8))) {
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = br.readLine()) != null) sb.append(line);
+                        respMsg = sb.toString();
+                    } catch (Exception ignore) {}
+                    
+                    final String finalMsg = respMsg;
+                    if (!finalMsg.isEmpty()) {
+                        String displayMsg = finalMsg;
+                        try {
+                            JSONObject j = new JSONObject(finalMsg);
+                            if (j.has("message")) displayMsg = j.getString("message");
+                        } catch (Exception ignore) {}
+                        
+                        final String finalDisplay = displayMsg;
+                        new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
+                                android.widget.Toast.makeText(ctx, finalDisplay, android.widget.Toast.LENGTH_LONG).show()
+                        );
+                    }
+                    vc.disconnect();
+                } catch (Exception ignore) {}
+            }
+
             // Ensure we use the correct endpoint based on type
             String endpoint = config.url;
             if (config.serverType == 1) {
@@ -240,6 +277,41 @@ public class QueueUploader {
                         JSONObject payloadToSend = new JSONObject(item.toString());
                         if (config.token != null && !config.token.isEmpty()) {
                             payloadToSend.put("token", config.token);
+                            
+                            // Ping verifyUrl to notify the server
+                            try {
+                                String mobileAddress = DeviceIdUtil.get(ctx);
+                                String urlStr = Const.verifyUrl(config.token) + "&mobile_address=" + mobileAddress;
+                                HttpURLConnection vc = (HttpURLConnection) new URL(urlStr).openConnection();
+                                vc.setRequestMethod("GET");
+                                vc.setConnectTimeout(5000);
+                                int code = vc.getResponseCode();
+                                
+                                String respMsg = "";
+                                try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(
+                                        (code >= 200 && code < 300) ? vc.getInputStream() : vc.getErrorStream(),
+                                        StandardCharsets.UTF_8))) {
+                                    StringBuilder sb = new StringBuilder();
+                                    String line;
+                                    while ((line = br.readLine()) != null) sb.append(line);
+                                    respMsg = sb.toString();
+                                } catch (Exception ignore) {}
+                                
+                                final String finalMsg = respMsg;
+                                if (!finalMsg.isEmpty()) {
+                                    String displayMsg = finalMsg;
+                                    try {
+                                        JSONObject j = new JSONObject(finalMsg);
+                                        if (j.has("message")) displayMsg = j.getString("message");
+                                    } catch (Exception ignore) {}
+                                    
+                                    final String finalDisplay = displayMsg;
+                                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
+                                            android.widget.Toast.makeText(ctx, finalDisplay, android.widget.Toast.LENGTH_LONG).show()
+                                    );
+                                }
+                                vc.disconnect();
+                            } catch (Exception ignore) {}
                         }
 
                         ResponseData res = postJson(endpoint, payloadToSend, "flush", queuedAt, config.token);
