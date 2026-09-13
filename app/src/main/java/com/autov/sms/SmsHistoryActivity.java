@@ -221,7 +221,7 @@ public class SmsHistoryActivity extends AppCompatActivity implements SmsAdapter.
         }
 
         try {
-            String deviceId = DeviceIdUtil.get(this);
+        String mobile_address = DeviceIdUtil.get(this);
             SimInfoUtil.SimInfo si = SimInfoUtil.read(this, record.simId);
             String maskedNumber = SimInfoUtil.maskNumber(si.phoneNumber);
 
@@ -245,9 +245,22 @@ public class SmsHistoryActivity extends AppCompatActivity implements SmsAdapter.
                 }
             } catch (Exception ignore) {}
 
+            String token = "";
+            List<SmsDatabaseHelper.Config> configs = SmsDatabaseHelper.getInstance(this).getAllConfigs();
+            if (!configs.isEmpty()) {
+                for (SmsDatabaseHelper.Config c : configs) {
+                    if (c.isActive && c.token != null) {
+                        token = c.token;
+                        break;
+                    }
+                }
+                if (token.isEmpty()) token = configs.get(0).token;
+            }
+
             JSONObject payload = new JSONObject()
                     .put("type", "incoming_resend")
-                    .put("device_unique_id", deviceId)
+                    .put("token", token)
+                    .put("mobile_address", mobile_address)
                     .put("battery_level", batteryLevel)
                     .put("is_charging", isCharging)
                     .put("from", record.from)
@@ -258,7 +271,6 @@ public class SmsHistoryActivity extends AppCompatActivity implements SmsAdapter.
                     .put("date", record.isoDate)
                     .put("_db_id", record.id);
 
-            List<SmsDatabaseHelper.Config> configs = SmsDatabaseHelper.getInstance(this).getAllConfigs();
             int matchCount = 0;
             
             // Mark as pending immediately for UI feedback
