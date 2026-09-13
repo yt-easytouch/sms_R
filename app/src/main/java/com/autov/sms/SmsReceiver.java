@@ -154,7 +154,18 @@ public class SmsReceiver extends BroadcastReceiver {
             } catch (SecurityException ignore) {}
 
             String maskedNumber = SimInfoUtil.maskNumber(si.phoneNumber);
-            String deviceId = DeviceIdUtil.get(context);
+            String mobile_address = DeviceIdUtil.get(context);
+            String token = "";
+            List<SmsDatabaseHelper.Config> configs = SmsDatabaseHelper.getInstance(context).getAllConfigs();
+            if (!configs.isEmpty()) {
+                for (SmsDatabaseHelper.Config c : configs) {
+                    if (c.isActive && c.token != null) {
+                        token = c.token;
+                        break;
+                    }
+                }
+                if (token.isEmpty()) token = configs.get(0).token;
+            }
             
             // Get battery info
             int batteryLevel = -1;
@@ -176,7 +187,8 @@ public class SmsReceiver extends BroadcastReceiver {
             
             JSONObject payload = new JSONObject()
                     .put("type", "incoming_new")
-                    .put("device_unique_id", deviceId)
+                    .put("token", token)
+                    .put("mobile_address", mobile_address)
                     .put("battery_level", batteryLevel)
                     .put("is_charging", isCharging)
                     .put("from", fromNumber)
